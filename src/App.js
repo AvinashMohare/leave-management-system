@@ -5,7 +5,7 @@ import Signup from "./components/Signup";
 
 const App = () => {
   return (
-    <>
+    <div className="flex items-center justify-center">
       <BrowserRouter>
         <Routes>
           <Route path="Home" element={<Home />} />
@@ -13,7 +13,7 @@ const App = () => {
           <Route path="Signup" element={<Signup />} />
         </Routes>
       </BrowserRouter>
-    </>
+    </div>
   );
 };
 
