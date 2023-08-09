@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { Mail, KeyRound } from "lucide-react";
 
 const Login = () => {
   return (
@@ -10,23 +11,34 @@ const Login = () => {
           <div className="flex flex-col justify-center text-2xl">
             <div className="flex flex-col justify-center my-2">
               <label htmlFor="email">Email</label>
-              <input type="email" required id="email" className="border-2" />
+              <div className="flex flex-row items-center justify-center border-2 border-black rounded-[5px]">
+                <Mail />
+                <input
+                  type="email"
+                  required
+                  id="email"
+                  className="focus:outline-none border-2 m-[5px]"
+                />
+              </div>
             </div>
             <div className="flex flex-col justify-center my-2">
               <label htmlFor="password">Password</label>
-              <input
-                type="password"
-                required
-                id="password"
-                className="border-2"
-              />
+              <div className="flex flex-row items-center justify-center border-2 border-black rounded-[5px]">
+                <KeyRound />
+                <input
+                  type="password"
+                  required
+                  id="password"
+                  className="focus:outline-none border-2 m-[5px]"
+                />
+              </div>
             </div>
             <div className="flex align-center justify-center my-2">
               <input
                 type="submit"
                 value="Login"
                 id="submit"
-                className="cursor-pointer bg-[#d62828] p-[5px] rounded-[8px] h-[32px] w-[320px] "
+                className="cursor-pointer bg-[#d62828] p-[5px] rounded-[8px] w-[320px] "
               />
             </div>
             <div className="flex flex-row align-center justify-center text-lg">

@@ -34,7 +34,7 @@ const Signup = () => {
               <input
                 type="submit"
                 value="Signup"
-                className="cursor-pointer bg-[#d62828] p-[5px] rounded-[8px] h-[32px] w-[320px] "
+                className="cursor-pointer bg-[#d62828] p-[5px] rounded-[8px] w-[320px] "
               />
             </div>
             <div className="flex flex-row align-center justify-center text-lg my-2">
