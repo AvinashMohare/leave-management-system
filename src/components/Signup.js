@@ -1,3 +1,4 @@
+import { User, Mail, KeyRound } from "lucide-react";
 import React from "react";
 import { Link } from "react-router-dom";
 
@@ -12,29 +13,70 @@ const Signup = () => {
           <div className="flex flex-col justify-center text-2xl">
             <div className="flex flex-col justify-center my-2">
               <label>First Name</label>
-              <input type="text" required className="border-2" />
+              <div className="flex flex-row items-center justify-center border-[1px] border-black rounded-[5px]">
+                <User />
+                <input
+                  type="text"
+                  required
+                  className="focus:outline-none m-[5px]"
+                />
+              </div>
             </div>
             <div className="flex flex-col justify-center my-2">
               <label>Second Name</label>
-              <input type="text" className="border-2" />
+              <div className="flex flex-row items-center justify-center border-[1px] border-black rounded-[5px]">
+                <User />
+                <input type="text" className="focus:outline-none m-[5px]" />
+              </div>
             </div>
             <div className="flex flex-col justify-center my-2">
               <label>Email</label>
-              <input type="email" required className="border-2" />
+              <div className="flex flex-row items-center justify-center border-[1px] border-black rounded-[5px]">
+                <Mail />
+                <input
+                  type="email"
+                  required
+                  className="focus:outline-none m-[5px]"
+                />
+              </div>
             </div>
             <div className="flex flex-col justify-center my-2">
               <label>Create Password</label>
-              <input type="password" required className="border-2" />
+              <div className="flex flex-row items-center justify-center border-[1px] border-black rounded-[5px]">
+                <KeyRound />
+                <input
+                  type="password"
+                  required
+                  className="focus:outline-none m-[5px]"
+                />
+              </div>
             </div>
             <div className="flex flex-col justify-center my-2">
               <label>Confirm Password</label>
-              <input type="password" required className="border-2" />
+              <div className="flex flex-row items-center justify-center border-[1px] border-black rounded-[5px]">
+                <KeyRound />
+                <input
+                  type="password"
+                  required
+                  className="focus:outline-none m-[5px]"
+                />
+              </div>
+            </div>
+            <div className="flex flex-row items-center justify-between">
+              <label>
+                <input type="radio" name="category" />
+                Employee
+              </label>
+              <label>
+                <input type="radio" name="category" />
+                Manager
+              </label>
             </div>
             <div className="flex align-center justify-center my-2">
               <input
                 type="submit"
                 value="Signup"
-                className="cursor-pointer bg-[#d62828] p-[5px] rounded-[8px] w-[320px] "
+                className="cursor-pointer bg-[#C77DFF] p-[5px] rounded-[8px] w-[320px] "
               />
             </div>
             <div className="flex flex-row align-center justify-center text-lg my-2">

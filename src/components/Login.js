@@ -11,25 +11,25 @@ const Login = () => {
           <div className="flex flex-col justify-center text-2xl">
             <div className="flex flex-col justify-center my-2">
               <label htmlFor="email">Email</label>
-              <div className="flex flex-row items-center justify-center border-2 border-black rounded-[5px]">
+              <div className="flex flex-row items-center justify-center border-[1px] border-black rounded-[5px]">
                 <Mail />
                 <input
                   type="email"
                   required
                   id="email"
-                  className="focus:outline-none border-2 m-[5px]"
+                  className="focus:outline-none m-[5px]"
                 />
               </div>
             </div>
             <div className="flex flex-col justify-center my-2">
               <label htmlFor="password">Password</label>
-              <div className="flex flex-row items-center justify-center border-2 border-black rounded-[5px]">
+              <div className="flex flex-row items-center justify-center border-[1px] border-black rounded-[5px]">
                 <KeyRound />
                 <input
                   type="password"
                   required
                   id="password"
-                  className="focus:outline-none border-2 m-[5px]"
+                  className="focus:outline-none m-[5px]"
                 />
               </div>
             </div>
@@ -38,7 +38,7 @@ const Login = () => {
                 type="submit"
                 value="Login"
                 id="submit"
-                className="cursor-pointer bg-[#d62828] p-[5px] rounded-[8px] w-[320px] "
+                className="cursor-pointer bg-[#C77DFF] p-[5px] rounded-[8px] w-[320px] "
               />
             </div>
             <div className="flex flex-row align-center justify-center text-lg">
