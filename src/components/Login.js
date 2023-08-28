@@ -1,8 +1,14 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { Mail, KeyRound } from "lucide-react";
+import { Mail, KeyRound, Eye, EyeOff } from "lucide-react";
 
 const Login = () => {
+  const [showPassword, setShowPassword] = useState(false);
+
+  const toggleHandlePassword = () => {
+    setShowPassword(!showPassword);
+  };
+
   return (
     <div className="flex items-center justify-center h-[100vh] font-oxygen">
       <form action="">
@@ -22,13 +28,19 @@ const Login = () => {
               </div>
             </div>
             <div className="flex flex-col justify-center my-2">
-              <label htmlFor="password">Password</label>
+              <div className="flex flex-row justify-between items-center">
+                <label htmlFor="password">Password</label>
+                <div className="cursor-pointer" onClick={toggleHandlePassword}>
+                  {showPassword ? <EyeOff /> : <Eye />}
+                </div>
+              </div>
               <div className="flex flex-row items-center justify-center border-[1px] border-black rounded-[5px]">
                 <KeyRound />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   id="password"
+                  F
                   className="focus:outline-none m-[5px]"
                 />
               </div>

@@ -1,8 +1,13 @@
-import { User, Mail, KeyRound } from "lucide-react";
-import React from "react";
+import React, { useState } from "react";
+import { User, Mail, KeyRound, Eye, EyeOff } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Signup = () => {
+  const [showPassword, setShowPassword] = useState(false);
+
+  const toggleHandlePassword = () => {
+    setShowPassword(!showPassword);
+  };
   return (
     <div className="flex items-center justify-center h-[100vh] font-oxygen">
       <form action="">
@@ -41,22 +46,32 @@ const Signup = () => {
               </div>
             </div>
             <div className="flex flex-col justify-center my-2">
-              <label>Create Password</label>
+              <div className="flex flex-row justify-between items-center">
+                <label htmlFor="password">Password</label>
+                <div className="cursor-pointer" onClick={toggleHandlePassword}>
+                  {showPassword ? <EyeOff /> : <Eye />}
+                </div>
+              </div>
               <div className="flex flex-row items-center justify-center border-[1px] border-black rounded-[5px]">
                 <KeyRound />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   className="focus:outline-none m-[5px]"
                 />
               </div>
             </div>
             <div className="flex flex-col justify-center my-2">
-              <label>Confirm Password</label>
+              <div className="flex flex-row justify-between items-center">
+                <label htmlFor="password">Confirm Password</label>
+                <div className="cursor-pointer" onClick={toggleHandlePassword}>
+                  {showPassword ? <EyeOff /> : <Eye />}
+                </div>
+              </div>
               <div className="flex flex-row items-center justify-center border-[1px] border-black rounded-[5px]">
                 <KeyRound />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   className="focus:outline-none m-[5px]"
                 />
