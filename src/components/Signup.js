@@ -1,9 +1,48 @@
 import React, { useState } from "react";
 import { User, Mail, KeyRound, Eye, EyeOff } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { auth } from "../firebase";
 
 const Signup = () => {
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const [submitButtonDisabled, setSubmitButtomDisabled] = useState(false);
+  const [values, setValues] = useState({
+    firstName: "",
+    secondName: "",
+    email: "",
+    password: "",
+  });
+
+  const handleRegistration = async (e) => {
+    e.preventDefault();
+    if (
+      !values.firstName ||
+      !values.secondName ||
+      !values.email ||
+      !values.password
+    ) {
+      alert("Please fill in all the details.");
+      return;
+    }
+    setSubmitButtomDisabled(true);
+    await createUserWithEmailAndPassword(auth, values.email, values.password)
+      .then(async (res) => {
+        setSubmitButtomDisabled(false);
+        const user = res.user;
+        await updateProfile(user, {
+          displayName: values.firstName + " " + values.secondName,
+        });
+        navigate("/");
+        console.log(res);
+      })
+      .catch((err) => {
+        setSubmitButtomDisabled(false);
+        console.log("Error-", err);
+      });
+    console.log(values);
+  };
 
   const toggleHandlePassword = () => {
     setShowPassword(!showPassword);
@@ -24,6 +63,12 @@ const Signup = () => {
                   type="text"
                   required
                   className="focus:outline-none m-[5px]"
+                  onChange={(event) =>
+                    setValues((prev) => ({
+                      ...prev,
+                      firstName: event.target.value,
+                    }))
+                  }
                 />
               </div>
             </div>
@@ -31,7 +76,17 @@ const Signup = () => {
               <label>Second Name</label>
               <div className="flex flex-row items-center justify-center border-[1px] border-black rounded-[5px]">
                 <User />
-                <input type="text" className="focus:outline-none m-[5px]" />
+                <input
+                  type="text"
+                  required
+                  className="focus:outline-none m-[5px]"
+                  onChange={(event) =>
+                    setValues((prev) => ({
+                      ...prev,
+                      secondName: event.target.value,
+                    }))
+                  }
+                />
               </div>
             </div>
             <div className="flex flex-col justify-center my-2">
@@ -42,6 +97,12 @@ const Signup = () => {
                   type="email"
                   required
                   className="focus:outline-none m-[5px]"
+                  onChange={(event) =>
+                    setValues((prev) => ({
+                      ...prev,
+                      email: event.target.value,
+                    }))
+                  }
                 />
               </div>
             </div>
@@ -58,6 +119,12 @@ const Signup = () => {
                   type={showPassword ? "text" : "password"}
                   required
                   className="focus:outline-none m-[5px]"
+                  onChange={(event) =>
+                    setValues((prev) => ({
+                      ...prev,
+                      password: event.target.value,
+                    }))
+                  }
                 />
               </div>
             </div>
@@ -92,6 +159,8 @@ const Signup = () => {
                 type="submit"
                 value="Signup"
                 className="cursor-pointer bg-[#C77DFF] p-[5px] rounded-[8px] w-[320px] "
+                onClick={handleRegistration}
+                disabled={submitButtonDisabled}
               />
             </div>
             <div className="flex flex-row align-center justify-center text-lg my-2">

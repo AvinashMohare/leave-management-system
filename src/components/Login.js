@@ -1,10 +1,37 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Mail, KeyRound, Eye, EyeOff } from "lucide-react";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../firebase";
 
 const Login = () => {
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const [submitButtonDisabled, setSubmitButtomDisabled] = useState(false);
+  const [values, setValues] = useState({
+    email: "",
+    password: "",
+  });
 
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    if (!values.email || !values.password) {
+      alert("Please fill in all the details.");
+      return;
+    }
+    setSubmitButtomDisabled(true);
+    await signInWithEmailAndPassword(auth, values.email, values.password)
+      .then(async (res) => {
+        setSubmitButtomDisabled(false);
+        navigate("/");
+        console.log(res);
+      })
+      .catch((err) => {
+        setSubmitButtomDisabled(false);
+        console.log("Error-", err);
+      });
+    console.log(values);
+  };
   const toggleHandlePassword = () => {
     setShowPassword(!showPassword);
   };
@@ -24,6 +51,12 @@ const Login = () => {
                   required
                   id="email"
                   className="focus:outline-none m-[5px]"
+                  onChange={(event) =>
+                    setValues((prev) => ({
+                      ...prev,
+                      email: event.target.value,
+                    }))
+                  }
                 />
               </div>
             </div>
@@ -40,8 +73,13 @@ const Login = () => {
                   type={showPassword ? "text" : "password"}
                   required
                   id="password"
-                  F
                   className="focus:outline-none m-[5px]"
+                  onChange={(event) =>
+                    setValues((prev) => ({
+                      ...prev,
+                      password: event.target.value,
+                    }))
+                  }
                 />
               </div>
             </div>
@@ -51,6 +89,8 @@ const Login = () => {
                 value="Login"
                 id="submit"
                 className="cursor-pointer bg-[#C77DFF] p-[5px] rounded-[8px] w-[320px] "
+                onClick={handleLogin}
+                disabled={submitButtonDisabled}
               />
             </div>
             <div className="flex flex-row align-center justify-center text-lg">

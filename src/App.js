@@ -8,6 +8,7 @@ const App = () => {
     <div className="flex items-center justify-center">
       <BrowserRouter>
         <Routes>
+          <Route path="/" element={<Home />} />
           <Route path="Home" element={<Home />} />
           <Route path="Login" element={<Login />} />
           <Route path="Signup" element={<Signup />} />
