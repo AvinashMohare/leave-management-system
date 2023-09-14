@@ -1,47 +1,47 @@
 import React, { useState } from "react";
-import { User, Mail, KeyRound, Eye, EyeOff } from "lucide-react";
+import { Mail, KeyRound, Eye, EyeOff } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebase";
 
 const Signup = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [submitButtonDisabled, setSubmitButtomDisabled] = useState(false);
+  const [error, setError] = useState("");
   const [values, setValues] = useState({
     firstName: "",
-    secondName: "",
+    lastName: "",
     email: "",
     password: "",
+    confirmPassword: "",
   });
 
   const handleRegistration = async (e) => {
     e.preventDefault();
-    if (
-      !values.firstName ||
-      !values.secondName ||
-      !values.email ||
-      !values.password
-    ) {
-      alert("Please fill in all the details.");
+    if (!values.email || !values.password || !values.confirmPassword) {
+      setError("Please fill all the details.");
+      return;
+    }
+    if (values.password !== values.confirmPassword) {
+      setError("Passwords do not match.");
       return;
     }
     setSubmitButtomDisabled(true);
     await createUserWithEmailAndPassword(auth, values.email, values.password)
       .then(async (res) => {
         setSubmitButtomDisabled(false);
-        const user = res.user;
-        await updateProfile(user, {
-          displayName: values.firstName + " " + values.secondName,
-        });
-        navigate("/");
+        // const user = res.user;
+        // await updateProfile(user, {
+        //   displayName: values.firstName + " " + values.lastName,
+        // });
+        navigate("/Details");
         console.log(res);
       })
       .catch((err) => {
         setSubmitButtomDisabled(false);
-        console.log("Error-", err);
+        setError(err.message);
       });
-    console.log(values);
   };
 
   const toggleHandlePassword = () => {
@@ -55,40 +55,6 @@ const Signup = () => {
             Signup
           </legend>
           <div className="flex flex-col justify-center text-2xl">
-            <div className="flex flex-col justify-center my-2">
-              <label>First Name</label>
-              <div className="flex flex-row items-center justify-center border-[1px] border-black rounded-[5px]">
-                <User />
-                <input
-                  type="text"
-                  required
-                  className="focus:outline-none m-[5px]"
-                  onChange={(event) =>
-                    setValues((prev) => ({
-                      ...prev,
-                      firstName: event.target.value,
-                    }))
-                  }
-                />
-              </div>
-            </div>
-            <div className="flex flex-col justify-center my-2">
-              <label>Second Name</label>
-              <div className="flex flex-row items-center justify-center border-[1px] border-black rounded-[5px]">
-                <User />
-                <input
-                  type="text"
-                  required
-                  className="focus:outline-none m-[5px]"
-                  onChange={(event) =>
-                    setValues((prev) => ({
-                      ...prev,
-                      secondName: event.target.value,
-                    }))
-                  }
-                />
-              </div>
-            </div>
             <div className="flex flex-col justify-center my-2">
               <label>Email</label>
               <div className="flex flex-row items-center justify-center border-[1px] border-black rounded-[5px]">
@@ -141,18 +107,17 @@ const Signup = () => {
                   type={showPassword ? "text" : "password"}
                   required
                   className="focus:outline-none m-[5px]"
+                  onChange={(event) =>
+                    setValues((prev) => ({
+                      ...prev,
+                      confirmPassword: event.target.value,
+                    }))
+                  }
                 />
               </div>
             </div>
-            <div className="flex flex-row items-center justify-between">
-              <label>
-                <input type="radio" name="category" />
-                Employee
-              </label>
-              <label>
-                <input type="radio" name="category" />
-                Manager
-              </label>
+            <div className="flex align-center justify-center my-2 text-[#ff0e0e] text-lg">
+              {error}
             </div>
             <div className="flex align-center justify-center my-2">
               <input

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Mail, KeyRound, Eye, EyeOff } from "lucide-react";
 import { signInWithEmailAndPassword } from "firebase/auth";
@@ -8,26 +8,36 @@ const Login = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [submitButtonDisabled, setSubmitButtomDisabled] = useState(false);
+  const [error, setError] = useState("");
   const [values, setValues] = useState({
     email: "",
     password: "",
   });
 
+  // useEffect(() => {
+  //   auth.onAuthStateChanged((user) => {
+  //     if (user) {
+  //       navigate("/dashboard");
+  //     }
+  //   });
+  // }, []);
+
   const handleLogin = async (e) => {
     e.preventDefault();
     if (!values.email || !values.password) {
-      alert("Please fill in all the details.");
+      setError("Please fill all the fields.");
       return;
     }
     setSubmitButtomDisabled(true);
     await signInWithEmailAndPassword(auth, values.email, values.password)
       .then(async (res) => {
         setSubmitButtomDisabled(false);
-        navigate("/");
+        navigate("/Details");
         console.log(res);
       })
       .catch((err) => {
         setSubmitButtomDisabled(false);
+        setError(err.message);
         console.log("Error-", err);
       });
     console.log(values);
@@ -82,6 +92,9 @@ const Login = () => {
                   }
                 />
               </div>
+            </div>
+            <div className="flex align-center justify-center my-2 text-[#ff0e0e] text-lg">
+              {error}
             </div>
             <div className="flex align-center justify-center my-2">
               <input
