@@ -6,13 +6,21 @@ const Details = () => {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("");
   const [error, setError] = useState("");
+  const [managerUid, setManagerUid] = useState("");
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!firstName || !lastName || !email || !role) {
+    if (
+      !firstName ||
+      !lastName ||
+      !email ||
+      !role ||
+      (role === "Employee" && !managerUid)
+    ) {
       setError("Pleasse fill all the details.");
+      return;
     }
-    console.log(firstName, lastName, email, role);
+    console.log(firstName, lastName, email, role, managerUid);
   };
 
   return (
@@ -81,6 +89,20 @@ const Details = () => {
                 </label>
               </div>
             </div>
+            {role === "Employee" ? (
+              <div className="flex flex-col justify-center my-2">
+                <label>Manager UID</label>
+                <div className="flex flex-row items-center justify-center border-[1px] border-black rounded-[5px]">
+                  <input
+                    type="text"
+                    required
+                    className="focus:outline-none m-[5px]"
+                    value={managerUid}
+                    onChange={(e) => setManagerUid(e.target.value)}
+                  />
+                </div>
+              </div>
+            ) : null}
             <div className="flex align-center justify-center my-2 text-[#ff0e0e] text-lg">
               {error}
             </div>
