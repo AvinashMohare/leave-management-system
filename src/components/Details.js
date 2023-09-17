@@ -1,6 +1,11 @@
 import React, { useState } from "react";
+import { auth, database } from "../firebase";
+import { ref, set } from "firebase/database";
+import { useNavigate } from "react-router-dom";
 
 const Details = () => {
+  const navigate = useNavigate();
+
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -10,6 +15,7 @@ const Details = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
     if (
       !firstName ||
       !lastName ||
@@ -20,7 +26,38 @@ const Details = () => {
       setError("Pleasse fill all the details.");
       return;
     }
+
     console.log(firstName, lastName, email, role, managerUid);
+
+    const userData =
+      role === "Manager"
+        ? {
+            name: firstName + " " + lastName,
+            email: email,
+            role: role,
+          }
+        : {
+            name: firstName + " " + lastName,
+            email: email,
+            role: role,
+            managerUid: managerUid,
+          };
+
+    const uid = auth.currentUser.uid;
+
+    const databasePath =
+      role === "Employee"
+        ? ref(database, `employees/${uid}`)
+        : ref(database, `managers/${uid}`);
+
+    set(databasePath, userData)
+      .then((res) => {
+        console.log(res);
+        navigate(
+          role === "Manager" ? "/ManagerDashboard" : "/EmployeeDashboard"
+        );
+      })
+      .catch((err) => console.log(err.message));
   };
 
   return (
