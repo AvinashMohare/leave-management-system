@@ -1,7 +1,30 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { LogOut } from "lucide-react";
+import { signOut } from "firebase/auth";
+import { useNavigate } from "react-router-dom";
+import { auth } from "../firebase";
 
 const ManagerDashboard = () => {
+  const navigate = useNavigate();
+  const [managerName, setManagerName] = useState("");
+
+  useEffect(() => {
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        setManagerName(user.displayName);
+      }
+    });
+  });
+
+  const handleLogout = () => {
+    signOut(auth)
+      .then(() => {
+        navigate("/login");
+      })
+      .catch((err) => {
+        console.log(err.message);
+      });
+  };
   return (
     <div className="w-[100%] h-[100vh] bg-[#F0F7F4] font-oxygen">
       <nav className="grid grid-cols-3 mx-1 my-1 bg-[#e4c1f9] p-2 rounded-[5px]">
@@ -9,11 +32,14 @@ const ManagerDashboard = () => {
           <p>Dashboard</p>
         </div>
         <div className="col-start-2 col-span-1 text-center text-2xl">
-          <p>Manager Name</p>
+          <p>{managerName}</p>
         </div>
         <div className="col-start-3 flex justify-end">
           <div className="border-[1px] border-black rounded-[5px] bg-[#F42C04]">
-            <button className="flex flex-row justify-center items-center mx-1 my-1">
+            <button
+              className="flex flex-row justify-center items-center mx-1 my-1"
+              onClick={handleLogout}
+            >
               Logout
               <LogOut className="mx-1" />
             </button>

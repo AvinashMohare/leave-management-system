@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Mail, KeyRound, Eye, EyeOff } from "lucide-react";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../firebase";
+import { auth, database } from "../firebase";
+import { onValue, ref } from "firebase/database";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -14,6 +15,8 @@ const Login = () => {
     password: "",
   });
 
+  const [userData, setUserData] = useState();
+
   // useEffect(() => {
   //   auth.onAuthStateChanged((user) => {
   //     if (user) {
@@ -21,6 +24,19 @@ const Login = () => {
   //     }
   //   });
   // }, []);
+  useEffect(() => {
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        const fetchUserData = ref(database, `users/${user.uid}`);
+        onValue(fetchUserData, (snapshot) => {
+          const data = snapshot.val();
+          setUserData(data);
+        });
+        const redirectPath = "/" + userData.role + "DashBoard";
+        navigate(redirectPath);
+      }
+    });
+  });
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -32,7 +48,7 @@ const Login = () => {
     await signInWithEmailAndPassword(auth, values.email, values.password)
       .then(async (res) => {
         setSubmitButtomDisabled(false);
-        navigate("/Details");
+        // navigate("/EmployeeDashboard");
         console.log(res);
       })
       .catch((err) => {

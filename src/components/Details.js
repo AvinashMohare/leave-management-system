@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { auth, database } from "../firebase";
 import { ref, set } from "firebase/database";
 import { useNavigate } from "react-router-dom";
+import { updateProfile } from "firebase/auth";
 
 const Details = () => {
   const navigate = useNavigate();
@@ -51,6 +52,18 @@ const Details = () => {
         : ref(database, `managers/${uid}`);
 
     set(databasePath, userData)
+      .then((res) => {
+        updateProfile(auth.currentUser, {
+          displayName: firstName + " " + lastName,
+        });
+      })
+      .catch((err) => console.log(err.message));
+
+    set(ref(database, "users/" + uid), {
+      name: firstName + " " + lastName,
+      email: email,
+      role: role,
+    })
       .then((res) => {
         console.log(res);
         navigate(
