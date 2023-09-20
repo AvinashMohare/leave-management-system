@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { auth, database } from "../firebase";
-import { ref, set } from "firebase/database";
+import { ref, set, update } from "firebase/database";
 import { useNavigate } from "react-router-dom";
 import { updateProfile } from "firebase/auth";
 
@@ -58,6 +58,16 @@ const Details = () => {
         });
       })
       .catch((err) => console.log(err.message));
+
+    if (role === "Employee") {
+      const managedEmployeeRef = ref(
+        database,
+        `managers/${managerUid}/managedEmployees`
+      );
+      update(managedEmployeeRef, {
+        [auth.currentUser.uid]: true,
+      }).catch((err) => console.log(err.message));
+    }
 
     set(ref(database, "users/" + uid), {
       name: firstName + " " + lastName,
