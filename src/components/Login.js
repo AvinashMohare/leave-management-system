@@ -32,11 +32,17 @@ const Login = () => {
           const data = snapshot.val();
           setUserData(data);
         });
-        const redirectPath = "/" + userData.role + "DashBoard";
-        navigate(redirectPath);
       }
     });
-  });
+  }, []);
+
+  // Navigate to the dashboard after userData is fetched
+  useEffect(() => {
+    if (userData && userData.role) {
+      const redirectPath = "/" + userData.role + "DashBoard";
+      navigate(redirectPath);
+    }
+  }, [userData, navigate]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -54,7 +60,6 @@ const Login = () => {
       .catch((err) => {
         setSubmitButtomDisabled(false);
         setError(err.message);
-        console.log("Error-", err);
       });
     console.log(values);
   };

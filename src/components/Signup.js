@@ -31,10 +31,6 @@ const Signup = () => {
     await createUserWithEmailAndPassword(auth, values.email, values.password)
       .then(async (res) => {
         setSubmitButtomDisabled(false);
-        // const user = res.user;
-        // await updateProfile(user, {
-        //   displayName: values.firstName + " " + values.lastName,
-        // });
         navigate("/Details");
         console.log(res);
       })

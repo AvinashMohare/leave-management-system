@@ -29,20 +29,8 @@ const EmployeeDashboard = () => {
           const data = snapshot.val();
           setManagerUid(data.managerUid);
         });
-
-        //Rendering leave requests
-        // onValue(
-        //   ref(database, `leaveRequests/${managerUid}/${auth.currentUser.uid}`),
-        //   (snapshot) => {
-        //     setRenderRequests([]);
-        //     const data = snapshot.val();
-        //     if (data != null) {
-        //       Object.values(data).map((request) => {
-        //         setRenderRequests((oldArray) => [...oldArray, request]);
-        //       });
-        //     }
-        //   }
-        // );
+      } else if (!user) {
+        navigate("/login");
       }
     });
   }, []);
@@ -87,15 +75,32 @@ const EmployeeDashboard = () => {
 
     const uid = auth.currentUser.uid;
 
+    const leaveReqUID = nanoid();
+
+    //Getting current date
+    const currentDate = new Date();
+    const day = String(currentDate.getDate()).padStart(2, "0");
+    const month = String(currentDate.getMonth() + 1).padStart(2, "0");
+    const year = currentDate.getFullYear();
+    const formattedDate = `${day}/${month}/${year}`;
+
+    //Getting current time
+    const hours = String(currentDate.getHours()).padStart(2, "0");
+    const minutes = String(currentDate.getMinutes()).padStart(2, "0");
+    const seconds = String(currentDate.getSeconds()).padStart(2, "0");
+    const currentTime = `${hours}:${minutes}:${seconds}`;
+
     const leaveReqData = {
+      name: auth.currentUser.displayName,
       employeeUid: uid,
       status: "pending",
       startDate: reqStartDate,
       endDate: reqEndDate,
       reason: reqReason,
+      nanoid: leaveReqUID,
+      requestedOnDate: formattedDate,
+      requestedAtTime: currentTime,
     };
-
-    const leaveReqUID = nanoid();
 
     const databasePath = ref(
       database,
@@ -105,10 +110,11 @@ const EmployeeDashboard = () => {
     set(databasePath, leaveReqData)
       .then((res) => {
         console.log(res);
+        setReqStartDate("");
+        setReqEndDate("");
+        setReqReason("");
       })
       .catch((err) => console.log(err.message));
-
-    console.log(reqStartDate, reqEndDate, reqReason);
   };
 
   return (
@@ -196,43 +202,44 @@ const EmployeeDashboard = () => {
               Request History
             </p>
           </div>
-          {/* <div className="flex flex-col justify-center items-center bg-[#e4c1f9] rounded-[5px] w-[70vw] my-2 p-2">
-            <div>Period of leave: 13/09/2023 - 20/09/2023</div>
-            <p className="my-2">
-              Generating random paragraphs can be an excellent way for writers
-              to get their creative flow going at the beginning of the day. The
-              writer has no idea what topic the random paragraph will be about
-              when it appears. This forces the writer to use creativity to
-              complete one of three common writing challenges. The writer can
-              use the paragraph as the first one of a short story and build upon
-              it. A second option is to use the random paragraph somewhere in a
-              short story they create. The third option is to have the random
-              paragraph be the ending paragraph in a short story. No matter
-              which of these challenges is undertaken, the writer is forced to
-              use creativity on incorporate the paragraph into their writing.
-            </p>
-            <div className="flex flex-row justify-between items-center w-[100%]">
-              <p>Requested on 12/09/2023</p>
-              <div>Status: Pending</div>
-            </div>
-          </div> */}
           {/* Rendering the requests */}
 
-          {renderRequests.map((request, index) => (
-            <div
-              key={index}
-              className="flex flex-col justify-center items-center bg-[#e4c1f9] rounded-[5px] w-[70vw] my-2 p-2"
-            >
-              <div>
-                Period of leave:{request.startDate} - {request.endDate}
+          {renderRequests.map((request, index) => {
+            return (
+              <div
+                key={index}
+                className="flex flex-col justify-center items-center bg-[#e4c1f9] rounded-[5px] w-[70vw] my-2 p-2"
+              >
+                <div>
+                  Period of leave:{request.startDate} - {request.endDate}
+                </div>
+                <p className="my-2">{request.reason}</p>
+                <div className="flex flex-row justify-between items-center w-[100%]">
+                  {request.status === "pending" ? (
+                    <div>
+                      <p>
+                        Requested on {request.requestedOnDate} at{" "}
+                        {request.requestedAtTime}
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      <p>
+                        Requested on {request.requestedOnDate} at{" "}
+                        {request.requestedAtTime}
+                      </p>
+                      <p>
+                        Responded on {request.respondedOnDate} at{" "}
+                        {request.respondedAtTime}
+                      </p>
+                    </div>
+                  )}
+
+                  <div>Status: {request.status}</div>
+                </div>
               </div>
-              <p className="my-2">{request.reason}</p>
-              <div className="flex flex-row justify-between items-center w-[100%]">
-                <p></p>
-                <div>Status: {request.status}</div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
 
           {/* Rendering requests ends here */}
         </div>
