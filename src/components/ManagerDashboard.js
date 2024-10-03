@@ -1,214 +1,333 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { LogOut } from "lucide-react";
 import { signOut } from "firebase/auth";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { auth, database } from "../firebase";
-import { onValue, ref, update } from "firebase/database";
+import { ref, onValue, update, get } from "firebase/database";
 
 const ManagerDashboard = () => {
   const navigate = useNavigate();
   const [managerName, setManagerName] = useState("");
   const [leaveRequests, setLeaveRequests] = useState([]);
+  const [filteredRequests, setFilteredRequests] = useState([]);
+  const [compOffRequests, setCompOffRequests] = useState([]);
+  const [employees, setEmployees] = useState([]);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
         setManagerName(user.displayName);
 
-        const leaveRequestsRef = ref(
-          database,
-          `leaveRequests/${auth.currentUser.uid}`
-        );
+        // Fetch leave requests for all employees
+        const leaveRequestsRef = ref(database, `leaveRequests`);
         onValue(leaveRequestsRef, (snapshot) => {
+          const leaveRequestsArray = [];
           if (snapshot.exists()) {
             const leaveRequestsData = snapshot.val();
-            const leaveRequestsArray = Object.values(leaveRequestsData)
-              .map((req) => Object.values(req))
-              .flat();
+            Object.entries(leaveRequestsData).forEach(
+              ([employeeUid, requests]) => {
+                Object.entries(requests).forEach(([requestId, requestData]) => {
+                  leaveRequestsArray.push({
+                    id: requestId,
+                    employeeUid,
+                    ...requestData,
+                  });
+                });
+              }
+            );
             setLeaveRequests(leaveRequestsArray);
+            setFilteredRequests(
+              leaveRequestsArray.filter(
+                (request) => request.status === "pending"
+              )
+            );
           } else {
             setLeaveRequests([]);
+            setFilteredRequests([]);
           }
         });
-      } else if (!user) {
+
+        // Fetch comp-off requests
+        const compOffRequestsRef = ref(database, "compOffRequests");
+        onValue(compOffRequestsRef, (snapshot) => {
+          const compOffRequestsArray = [];
+          if (snapshot.exists()) {
+            const compOffRequestsData = snapshot.val();
+            Object.entries(compOffRequestsData).forEach(
+              ([employeeUid, requests]) => {
+                Object.entries(requests).forEach(([requestId, requestData]) => {
+                  if (
+                    requestData.seniorApproval === "approved" &&
+                    requestData.managerApproval === "pending"
+                  ) {
+                    compOffRequestsArray.push({
+                      id: requestId,
+                      employeeUid,
+                      ...requestData,
+                    });
+                  }
+                });
+              }
+            );
+          }
+          setCompOffRequests(compOffRequestsArray);
+        });
+
+        // Fetch employees
+        const employeesRef = ref(database, "employees");
+        onValue(employeesRef, (snapshot) => {
+          if (snapshot.exists()) {
+            const employeesData = snapshot.val();
+            const employeesArray = Object.entries(employeesData).map(
+              ([uuid, emp]) => ({
+                uuid,
+                ...emp,
+              })
+            );
+            setEmployees(employeesArray);
+          } else {
+            setEmployees([]);
+          }
+        });
+      } else {
         navigate("/login");
       }
     });
+
     return () => unsubscribe();
-  }, []);
+  }, [navigate]);
 
-  //Approve request
-  const approveRequest = (tempReqNanoid, tempEmployeeUid) => {
-    //Getting current date
-    const currentDate = new Date();
-    const day = String(currentDate.getDate()).padStart(2, "0");
-    const month = String(currentDate.getMonth() + 1).padStart(2, "0");
-    const year = currentDate.getFullYear();
-    const formattedDate = `${day}/${month}/${year}`;
-
-    //Getting current time
-    const hours = String(currentDate.getHours()).padStart(2, "0");
-    const minutes = String(currentDate.getMinutes()).padStart(2, "0");
-    const seconds = String(currentDate.getSeconds()).padStart(2, "0");
-    const currentTime = `${hours}:${minutes}:${seconds}`;
-
-    const approveRef = ref(
-      database,
-      `leaveRequests/${auth.currentUser.uid}/${tempEmployeeUid}/${tempReqNanoid}`
-    );
-    update(approveRef, {
-      status: "approved",
-      respondedOnDate: formattedDate,
-      respondedAtTime: currentTime,
-    });
+  const calculateLeaveDays = (startDate, endDate) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    return Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
   };
 
-  //Reject request
-  const rejectRequest = (tempReqNanoid, tempEmployeeUid) => {
-    //Getting current date
-    const currentDate = new Date();
-    const day = String(currentDate.getDate()).padStart(2, "0");
-    const month = String(currentDate.getMonth() + 1).padStart(2, "0");
-    const year = currentDate.getFullYear();
-    const formattedDate = `${day}/${month}/${year}`;
+  const deductLeave = async (employeeUid, leaveType, days) => {
+    const employeeRef = ref(database, `employees/${employeeUid}`);
+    const snapshot = await get(employeeRef);
+    const employeeData = snapshot.val();
 
-    //Getting current time
-    const hours = String(currentDate.getHours()).padStart(2, "0");
-    const minutes = String(currentDate.getMinutes()).padStart(2, "0");
-    const seconds = String(currentDate.getSeconds()).padStart(2, "0");
-    const currentTime = `${hours}:${minutes}:${seconds}`;
+    if (employeeData) {
+      let leaveBalance;
+      switch (leaveType) {
+        case "sickLeave":
+          leaveBalance = "sickLeaves";
+          break;
+        case "compOffLeave":
+          leaveBalance = "compOffs";
+          break;
+        default:
+          leaveBalance = "leaves";
+      }
 
-    const rejectRef = ref(
-      database,
-      `leaveRequests/${auth.currentUser.uid}/${tempEmployeeUid}/${tempReqNanoid}`
-    );
-    update(rejectRef, {
-      status: "rejected",
-      respondedOnDate: formattedDate,
-      respondedAtTime: currentTime,
-    });
+      const currentLeaveCount = employeeData[leaveBalance] || 0;
+      const newLeaveCount = Math.max(0, currentLeaveCount - days);
+
+      await update(employeeRef, { [leaveBalance]: newLeaveCount });
+    }
   };
 
-  //Signing out user
+  const approveRequest = async (request) => {
+    const { id, employeeUid, leaveType, startDate, endDate } = request;
+    const approveRef = ref(database, `leaveRequests/${employeeUid}/${id}`);
+
+    const days = calculateLeaveDays(startDate, endDate);
+
+    try {
+      await update(approveRef, { status: "approved" });
+      await deductLeave(employeeUid, leaveType, days);
+      alert("Leave request approved and leave balance updated.");
+    } catch (error) {
+      console.error("Error approving request:", error);
+      alert("Error approving request. Please try again.");
+    }
+  };
+
+  const rejectRequest = async (request) => {
+    const { id, employeeUid } = request;
+    const rejectRef = ref(database, `leaveRequests/${employeeUid}/${id}`);
+
+    try {
+      await update(rejectRef, { status: "rejected" });
+      alert("Leave request rejected.");
+    } catch (error) {
+      console.error("Error rejecting request:", error);
+      alert("Error rejecting request. Please try again.");
+    }
+  };
+
+  const approveCompOffRequest = async (request) => {
+    const { id, employeeUid } = request;
+    const approveRef = ref(database, `compOffRequests/${employeeUid}/${id}`);
+    const employeeRef = ref(database, `employees/${employeeUid}`);
+
+    try {
+      // Update the request status
+      await update(approveRef, {
+        managerApproval: "approved",
+        managerApprovalTimestamp: Date.now(),
+      });
+
+      // Increase the employee's compOff balance
+      const employeeSnapshot = await get(employeeRef);
+      const employeeData = employeeSnapshot.val();
+      const currentCompOffs = employeeData.compOffs || 0;
+      await update(employeeRef, { compOffs: currentCompOffs + 1 });
+
+      alert("Comp-off request approved and balance updated.");
+    } catch (error) {
+      console.error("Error approving comp-off request:", error);
+      alert("Error approving comp-off request. Please try again.");
+    }
+  };
+
+  const rejectCompOffRequest = async (request) => {
+    const { id, employeeUid } = request;
+    const rejectRef = ref(database, `compOffRequests/${employeeUid}/${id}`);
+
+    try {
+      await update(rejectRef, {
+        managerApproval: "rejected",
+        managerApprovalTimestamp: Date.now(),
+      });
+      alert("Comp-off request rejected.");
+    } catch (error) {
+      console.error("Error rejecting comp-off request:", error);
+      alert("Error rejecting comp-off request. Please try again.");
+    }
+  };
+
   const handleLogout = () => {
     signOut(auth)
-      .then(() => {
-        navigate("/login");
-      })
-      .catch((err) => {
-        console.log(err.message);
-      });
+      .then(() => navigate("/login"))
+      .catch((err) => console.error(err.message));
   };
+
   return (
-    <div className="w-[100%] h-[100vh] bg-[#F0F7F4] font-oxygen">
-      <nav className="grid grid-cols-3 mx-1 my-1 bg-[#e4c1f9] p-2 rounded-[5px]">
-        <div className="col-start-1 text-2xl">
-          <p>Dashboard</p>
-        </div>
-        <div className="col-start-2 col-span-1 text-center text-2xl">
-          <p>{managerName}</p>
-        </div>
+    <div className="w-full min-h-screen bg-[#F0F7F4] font-oxygen">
+      <nav className="grid grid-cols-3 mx-1 my-1 bg-[#e4c1f9] p-2 rounded-md">
+        <div className="col-start-1 text-2xl">Manager Dashboard</div>
+        <div className="col-start-2 text-center text-2xl">{managerName}</div>
         <div className="col-start-3 flex justify-end">
-          <div className="border-[1px] border-black rounded-[5px] bg-[#F42C04]">
-            <button
-              className="flex flex-row justify-center items-center mx-1 my-1"
-              onClick={handleLogout}
-            >
-              Logout
-              <LogOut className="mx-1" />
-            </button>
-          </div>
+          <button
+            className="bg-red-500 text-white p-2 rounded-md"
+            onClick={handleLogout}
+          >
+            Logout <LogOut className="inline" />
+          </button>
         </div>
       </nav>
-      <div className="mx-1 my-1 bg-[#e4c1f9] p-2 rounded-[5px]">
-        {/* Available Requests */}
-        <div className="flex flex-col justify-center items-center my-2 mx-2 bg-[#4cc9f0] rounded-[5px]">
-          <div className="text-center text-2xl font-bold mb-2 my-2">
-            <p>Available Requests</p>
-          </div>
-          {/* Rendering available requests */}
-          {leaveRequests.map((request) => {
-            if (request.status === "pending") {
-              return (
-                <div
-                  key={request.nanoid}
-                  className="flex flex-col justify-center items-center bg-[#e4c1f9] rounded-[5px] w-[70vw] my-2 p-2"
-                >
-                  <div>
-                    Period of leave: {request.startDate} - {request.endDate}
-                  </div>
-                  <p className="my-2">{request.reason}</p>
-                  <div className="flex flex-row justify-between items-center w-[100%]">
-                    <p>Requested on 12/09/2023</p>
-                    <div className="flex flex-row justify-between items-center">
-                      <div className="cursor-pointer bg-[#16E0BD] p-[5px] rounded-[5px] p-2 font-bold my-2 mx-2">
-                        <button
-                          onClick={() =>
-                            approveRequest(request.nanoid, request.employeeUid)
-                          }
-                        >
-                          Approve
-                        </button>
-                      </div>
-                      <div className="cursor-pointer bg-[#FF4242] p-[5px] rounded-[5px] p-2 font-bold my-2 mx-2">
-                        <button
-                          onClick={() =>
-                            rejectRequest(request.nanoid, request.employeeUid)
-                          }
-                        >
-                          Reject
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            }
-            return null;
-          })}
-          {/* Rendering available requests ends here*/}
+
+      <div className="flex flex-wrap">
+        {/* Left Column: Employee List */}
+        <div className="w-full md:w-1/3 p-4 bg-[#e4c1f9]">
+          <h2 className="text-xl font-bold mb-4">Employees</h2>
+          {employees.map((employee) => (
+            <Link
+              key={employee.uuid}
+              to={`/employee/${employee.uuid}`}
+              className="block my-2 p-2 bg-[#f0e68c] rounded hover:bg-[#d3d3d3]"
+            >
+              {employee.name} - Leaves: {employee.leaves}, Sick Leaves:{" "}
+              {employee.sickLeaves}, Comp Offs: {employee.compOffs}
+            </Link>
+          ))}
         </div>
-        {/* Request History */}
-        <div className="flex flex-col justify-center items-center my-2 mx-2 bg-[#4cc9f0] rounded-[5px]">
-          <div>
-            <p className="text-center text-2xl font-bold mb-2 my-2">
-              Request History
-            </p>
-          </div>
-          {/* Rendering the request history */}
-          {leaveRequests.map((request) => {
-            if (
-              request.status === "approved" ||
-              request.status === "rejected"
-            ) {
+
+        {/* Right Column: Leave Requests */}
+        <div className="w-full md:w-2/3 p-4 bg-[#4cc9f0]">
+          <h2 className="text-2xl font-bold mb-4">Leave Requests</h2>
+          {filteredRequests.length > 0 ? (
+            filteredRequests.map((request) => {
+              const employee = employees.find(
+                (emp) => emp.uuid === request.employeeUid
+              );
               return (
-                <div
-                  key={request.nanoid}
-                  className="flex flex-col justify-center items-center bg-[#e4c1f9] rounded-[5px] w-[70vw] my-2 p-2"
-                >
-                  <div>
-                    Period of leave: {request.startDate} - {request.endDate}
-                  </div>
-                  <p className="my-2">{request.reason}</p>
-                  <div className="flex flex-row justify-between items-center w-[100%]">
-                    <div>
-                      <p>
-                        Requested on {request.requestedOnDate} at{" "}
-                        {request.requestedAtTime}
-                      </p>
-                      <p>
-                        Responded on {request.respondedOnDate} at{" "}
-                        {request.respondedAtTime}
-                      </p>
-                    </div>
-                    <div>Status: {request.status}</div>
-                  </div>
+                <div key={request.id} className="mb-4 p-4 bg-[#e4c1f9] rounded">
+                  <p>
+                    <strong>Employee:</strong>{" "}
+                    {employee ? employee.name : "Unknown"}
+                  </p>
+                  <p>
+                    <strong>Leave Type:</strong> {request.leaveType}
+                  </p>
+                  <p>
+                    <strong>Start Date:</strong> {request.startDate}
+                  </p>
+                  <p>
+                    <strong>End Date:</strong> {request.endDate}
+                  </p>
+                  <p>
+                    <strong>Reason:</strong> {request.reason}
+                  </p>
+                  <p>
+                    <strong>Status:</strong> {request.status}
+                  </p>
+
+                  <button
+                    className="bg-green-500 p-2 rounded-md text-white mr-2 mt-2"
+                    onClick={() => approveRequest(request)}
+                  >
+                    Approve
+                  </button>
+                  <button
+                    className="bg-red-500 p-2 rounded-md text-white mt-2"
+                    onClick={() => rejectRequest(request)}
+                  >
+                    Reject
+                  </button>
                 </div>
               );
-            }
-            return null;
-          })}
-          {/* Rendering request history ends here */}
+            })
+          ) : (
+            <p>No leave requests available.</p>
+          )}
+
+          <h2 className="text-2xl font-bold mb-4 mt-8">Comp-Off Requests</h2>
+          {compOffRequests.length > 0 ? (
+            compOffRequests.map((request) => {
+              const employee = employees.find(
+                (emp) => emp.uuid === request.employeeUid
+              );
+              return (
+                <div key={request.id} className="mb-4 p-4 bg-[#e4c1f9] rounded">
+                  <p>
+                    <strong>Employee:</strong>{" "}
+                    {employee ? employee.name : "Unknown"}
+                  </p>
+                  <p>
+                    <strong>Date:</strong> {request.date}
+                  </p>
+                  <p>
+                    <strong>Reason:</strong> {request.reason}
+                  </p>
+                  <p>
+                    <strong>Half Day:</strong>{" "}
+                    {request.isHalfDay ? "Yes" : "No"}
+                  </p>
+                  <p>
+                    <strong>Senior Approval:</strong> {request.seniorApproval}
+                  </p>
+
+                  <button
+                    className="bg-green-500 p-2 rounded-md text-white mr-2 mt-2"
+                    onClick={() => approveCompOffRequest(request)}
+                  >
+                    Approve
+                  </button>
+                  <button
+                    className="bg-red-500 p-2 rounded-md text-white mt-2"
+                    onClick={() => rejectCompOffRequest(request)}
+                  >
+                    Reject
+                  </button>
+                </div>
+              );
+            })
+          ) : (
+            <p>No comp-off requests available.</p>
+          )}
         </div>
       </div>
     </div>

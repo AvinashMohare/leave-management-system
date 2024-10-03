@@ -42,6 +42,9 @@ const Details = () => {
             email: email,
             role: role,
             managerUid: managerUid,
+            leaves: 0,
+            sickLeaves: 0,
+            compOffs: 0,
           };
 
     const uid = auth.currentUser.uid;

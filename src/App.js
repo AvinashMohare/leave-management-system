@@ -6,6 +6,7 @@ import NoRouteMatch from "./components/NoRouteMatch";
 import Details from "./components/Details";
 import EmployeeDashboard from "./components/EmployeeDashboard";
 import ManagerDashboard from "./components/ManagerDashboard";
+import EmployeeDetail from "./components/EmployeeDetails";
 
 const App = () => {
   return (
@@ -19,6 +20,7 @@ const App = () => {
           <Route path="Details" element={<Details />} />
           <Route path="EmployeeDashboard" element={<EmployeeDashboard />} />
           <Route path="ManagerDashboard" element={<ManagerDashboard />} />
+          <Route path="/employee/:employeeId" element={<EmployeeDetail />} />
           <Route path="*" element={<NoRouteMatch />} />
         </Routes>
       </BrowserRouter>
