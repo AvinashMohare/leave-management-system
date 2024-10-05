@@ -1,7 +1,7 @@
 import formatDate from "./dateFormat";
 
 export const sendSlackNotification = async (leaveData, employeeName) => {
-  const apiUrl = REACT_APP_SLACK_NOTIFICATION_API;
+  const apiUrl = process.env.REACT_APP_SLACK_NOTIFICATION_API;
 
   // Format the leave type
   const formattedLeaveType =
@@ -58,8 +58,7 @@ export const sendCompOffSlackNotification = async (
   employeeName,
   seniorEmployeeName
 ) => {
-  const apiUrl =
-    "https://92tw2b8p5i.execute-api.ap-northeast-1.amazonaws.com/prod/send-slack-notification";
+  const apiUrl = process.env.REACT_APP_SLACK_NOTIFICATION_API;
 
   // Determine if it's a full day or half day
   const dayType = compOffData.isHalfDay ? "half day" : "full day";
