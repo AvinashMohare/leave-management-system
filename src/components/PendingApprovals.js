@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { database } from "../firebase";
 import { ref, onValue, update } from "firebase/database";
+import formatDate from "../utils/dateFormat";
 
 const PendingApprovals = ({ currentUserId }) => {
   const [pendingRequests, setPendingRequests] = useState([]);
+  const [employeeNames, setEmployeeNames] = useState({});
 
   useEffect(() => {
-    // Fetch pending requests where seniorApproval is "pending"
     const requestsRef = ref(database, "compOffRequests");
     onValue(requestsRef, (snapshot) => {
       const data = snapshot.val();
@@ -16,7 +17,7 @@ const PendingApprovals = ({ currentUserId }) => {
             .filter(
               ([_, request]) =>
                 request.approvalFrom === currentUserId &&
-                request.seniorApproval === "pending" // Only show pending approvals
+                request.seniorApproval === "pending"
             )
             .map(([requestId, request]) => ({
               id: requestId,
@@ -25,6 +26,7 @@ const PendingApprovals = ({ currentUserId }) => {
             }))
         );
         setPendingRequests(pending);
+        fetchEmployeeNames(pending.map((request) => request.userId));
       }
     });
   }, [currentUserId]);
@@ -32,7 +34,7 @@ const PendingApprovals = ({ currentUserId }) => {
   const handleApproval = (requestId, userId, approved) => {
     const requestRef = ref(database, `compOffRequests/${userId}/${requestId}`);
     update(requestRef, {
-      seniorApproval: approved ? "approved" : "rejected", // Update seniorApproval to approved/rejected
+      seniorApproval: approved ? "approved" : "rejected",
       approvedBy: currentUserId,
       approvalTimestamp: Date.now(),
     })
@@ -45,34 +47,49 @@ const PendingApprovals = ({ currentUserId }) => {
       });
   };
 
+  const fetchEmployeeNames = (userIds) => {
+    userIds.forEach((userId) => {
+      const userRef = ref(database, `employees/${userId}`);
+      onValue(userRef, (snapshot) => {
+        const userData = snapshot.val();
+        if (userData && userData.name) {
+          setEmployeeNames((prevNames) => ({
+            ...prevNames,
+            [userId]: userData.name,
+          }));
+        }
+      });
+    });
+  };
+
   return (
-    <div className="bg-[#e4c1f9] p-4 rounded-[5px] mt-4">
-      <h2 className="text-center text-2xl font-bold mb-4">Pending Approvals</h2>
+    <div className="bg-white shadow-md rounded-lg p-6">
+      <h2 className="text-2xl font-bold mb-4">Pending CompOff Approvals</h2>
       {pendingRequests.length === 0 ? (
-        <p className="text-center">No pending requests</p>
+        <p className="text-center text-gray-500">No pending requests</p>
       ) : (
         <ul className="space-y-4">
           {pendingRequests.map((request) => (
-            <li key={request.id} className="bg-white p-4 rounded shadow">
-              <p>
-                <strong>Date:</strong>{" "}
-                {new Date(request.date).toLocaleDateString()}
+            <li key={request.id} className="bg-gray-50 p-4 rounded-lg shadow">
+              <p className="font-semibold mb-2">
+                Requested By: {employeeNames[request.userId] || "Fetching..."}
               </p>
-              <p>
-                <strong>Reason:</strong> {request.reason}
+              <p className="mb-1">
+                {request.isHalfDay ? (
+                  <>Half day on {formatDate(request.date)}</>
+                ) : (
+                  <>Full Day on {formatDate(request.date)}</>
+                )}
               </p>
-              <p>
-                <strong>Half Day:</strong> {request.isHalfDay ? "Yes" : "No"}
+              <p className="mb-3">
+                <span className="font-semibold">Reason:</span> {request.reason}
               </p>
-              <p>
-                <strong>Requested By:</strong> {request.requestedBy}
-              </p>
-              <div className="mt-2 space-x-2">
+              <div className="flex space-x-2">
                 <button
                   onClick={() =>
                     handleApproval(request.id, request.userId, true)
                   }
-                  className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                  className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors"
                 >
                   Approve
                 </button>
@@ -80,7 +97,7 @@ const PendingApprovals = ({ currentUserId }) => {
                   onClick={() =>
                     handleApproval(request.id, request.userId, false)
                   }
-                  className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+                  className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors"
                 >
                   Reject
                 </button>

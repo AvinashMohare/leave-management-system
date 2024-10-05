@@ -6,16 +6,22 @@ import { signOut } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import CompOffRequestForm from "./CompOffRequestForm";
 import PendingApprovals from "./PendingApprovals";
-
+import LeaveHistory from "./LeaveHistory";
+import { sendSlackNotification } from "../utils/sendSlackNotification";
+import CompOffHistory from "./CompOffHistory";
 const EmployeeDashboard = () => {
   const [employeeData, setEmployeeData] = useState("");
+  const [activeTab, setActiveTab] = useState("Leave Balance");
   const [isLeaveFormVisible, setIsLeaveFormVisible] = useState(false);
   const [reqStartDate, setReqStartDate] = useState("");
   const [reqEndDate, setReqEndDate] = useState("");
   const [reqReason, setReqReason] = useState("");
   const [reqLeaveType, setReqLeaveType] = useState("casualLeave");
   const [formError, setFormError] = useState("");
+  const [isHalfDay, setIsHalfDay] = useState(false);
   const [isCompOffFormVisible, setIsCompOffFormVisible] = useState(false);
+  const [notifySlack, setNotifySlack] = useState(false);
+  const [slackNotifData, setSlackNotifData] = useState({});
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -42,11 +48,16 @@ const EmployeeDashboard = () => {
   };
 
   const validateForm = () => {
-    if (!reqLeaveType || !reqStartDate || !reqEndDate || !reqReason.trim()) {
+    if (
+      !reqLeaveType ||
+      !reqStartDate ||
+      (!isHalfDay && !reqEndDate) ||
+      !reqReason.trim()
+    ) {
       setFormError("Please fill in all fields");
       return false;
     }
-    if (new Date(reqEndDate) < new Date(reqStartDate)) {
+    if (!isHalfDay && new Date(reqEndDate) < new Date(reqStartDate)) {
       setFormError("End date cannot be earlier than start date");
       return false;
     }
@@ -54,7 +65,7 @@ const EmployeeDashboard = () => {
     return true;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!validateForm()) {
@@ -67,11 +78,14 @@ const EmployeeDashboard = () => {
       const leaveRequest = {
         leaveType: reqLeaveType,
         startDate: reqStartDate,
-        endDate: reqEndDate,
+        endDate: isHalfDay ? reqStartDate : reqEndDate,
         reason: reqReason.trim(),
         status: "pending",
         timestamp: Date.now(),
+        isHalfDay: isHalfDay,
       };
+
+      setSlackNotifData(leaveRequest);
 
       const newLeaveRequestRef = push(
         ref(database, `leaveRequests/${user.uid}`)
@@ -85,7 +99,13 @@ const EmployeeDashboard = () => {
           setReqStartDate("");
           setReqEndDate("");
           setReqReason("");
+          setIsHalfDay(false);
           setFormError("");
+
+          // Move the Slack notification here
+          if (notifySlack) {
+            sendSlackNotification(leaveRequest, employeeData.name);
+          }
         })
         .catch((error) => {
           console.error("Error submitting leave request:", error);
@@ -98,137 +118,187 @@ const EmployeeDashboard = () => {
     const newStartDate = event.target.value;
     setReqStartDate(newStartDate);
 
-    // If end date is earlier than new start date, reset end date
-    if (reqEndDate && new Date(reqEndDate) < new Date(newStartDate)) {
+    if (
+      !isHalfDay &&
+      reqEndDate &&
+      new Date(reqEndDate) < new Date(newStartDate)
+    ) {
       setReqEndDate("");
     }
   };
 
-  return (
-    <div className="w-full h-screen bg-[#F0F7F4] font-oxygen">
-      <nav className="grid grid-cols-3 mx-1 my-1 bg-[#e4c1f9] p-2 rounded-[5px]">
-        <div className="col-start-1 text-2xl">
-          <p>Dashboard</p>
-        </div>
-        <div className="col-start-2 col-span-1 text-center text-2xl">
-          <p>{employeeData.name}</p>
-        </div>
-        <div className="col-start-3 flex justify-end">
-          <div className="border-[1px] border-black rounded-[5px] bg-[#F42C04]">
-            <button
-              className="flex flex-row justify-center items-center mx-1 my-1"
-              onClick={handleLogout}
-            >
-              Logout
-              <LogOut className="mx-1" />
-            </button>
+  const renderContent = () => {
+    switch (activeTab) {
+      case "Leave Balance":
+        return (
+          <div className="bg-white shadow-md rounded-lg p-6">
+            <h2 className="text-2xl font-bold mb-4">Leave Balance</h2>
+            <p className="mb-2">
+              Casual Leaves Remaining: {employeeData.leaves || 0}
+            </p>
+            {employeeData.isMumbaiTeam && (
+              <p className="mb-2">
+                Sick Leaves Remaining: {employeeData.sickLeaves || 0}
+              </p>
+            )}
+            <p className="mb-2">
+              Comp Offs Remaining: {employeeData.compOffs || 0}
+            </p>
           </div>
-        </div>
-      </nav>
-
-      <div className="mx-1 my-1 bg-[#e4c1f9] p-2 rounded-[5px]">
-        <h2 className="text-center text-2xl font-bold mb-2 my-2">
-          Leave Balance
-        </h2>
-        <p>Total Leaves Remaining: {employeeData.leaves || 0}</p>
-        <p>Sick Leaves Remaining: {employeeData.sickLeaves || 0}</p>
-        <p>Comp Offs Remaining: {employeeData.compOffs || 0}</p>
-      </div>
-
-      <div className="mx-1 my-1 bg-[#e4c1f9] p-2 rounded-[5px] flex justify-around">
-        <button
-          className="cursor-pointer bg-[#fb5607] p-[5px] rounded-[5px] p-2 font-bold my-2"
-          onClick={() => setIsLeaveFormVisible(true)}
-        >
-          Ask for a Leave
-        </button>
-        <button
-          className="cursor-pointer bg-[#4cc9f0] p-[5px] rounded-[5px] p-2 font-bold my-2"
-          onClick={() => setIsCompOffFormVisible(true)}
-        >
-          Ask for a Comp Off
-        </button>
-      </div>
-
-      {isLeaveFormVisible && (
-        <div className="flex flex-col justify-center items-center my-2 mx-2 bg-[#4cc9f0] rounded-[5px]">
-          <form
-            className="flex flex-col justify-center items-center"
-            onSubmit={handleSubmit}
-          >
-            <fieldset>
-              <legend className="text-center text-2xl font-bold mb-2 my-2">
-                Create a Leave Request
-              </legend>
-
+        );
+      case "Request Leave":
+        return (
+          <div className="bg-white shadow-md rounded-lg p-6">
+            <h2 className="text-2xl font-bold mb-4">Request Leave</h2>
+            <form onSubmit={handleSubmit} className="space-y-4">
               {formError && (
-                <div className="text-red-500 font-bold mb-2">{formError}</div>
+                <div className="text-red-500 font-bold">{formError}</div>
               )}
-
-              <div className="my-2">
-                <label>Type of Leave: </label>
+              <div>
+                <label className="block mb-1">Type of Leave:</label>
                 <select
-                  className="rounded-[5px] mx-2"
+                  className="w-full p-2 border rounded"
                   value={reqLeaveType}
                   onChange={(event) => setReqLeaveType(event.target.value)}
                   required
                 >
                   <option value="casualLeave">Casual Leave</option>
-                  <option value="sickLeave">Sick Leave</option>
+                  {employeeData.isMumbaiTeam && (
+                    <option value="sickLeave">Sick Leave</option>
+                  )}
                   <option value="compOffLeave">Comp Off Leave</option>
                 </select>
               </div>
-
-              <div className="flex flex-row my-2">
-                <label>
-                  From:
+              <div>
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={isHalfDay}
+                    onChange={(e) => setIsHalfDay(e.target.checked)}
+                    className="mr-2"
+                  />
+                  Half Day
+                </label>
+              </div>
+              <div className="flex space-x-4">
+                <div className="flex-1">
+                  <label className="block mb-1">
+                    {isHalfDay ? "Date:" : "From:"}
+                  </label>
                   <input
                     type="date"
-                    className="rounded-[5px] mx-2"
+                    className="w-full p-2 border rounded"
                     value={reqStartDate}
                     onChange={handleStartDateChange}
                     required
                   />
-                </label>
-                <label>
-                  To:
+                </div>
+                {!isHalfDay && (
+                  <div className="flex-1">
+                    <label className="block mb-1">To:</label>
+                    <input
+                      type="date"
+                      className="w-full p-2 border rounded"
+                      value={reqEndDate}
+                      onChange={(event) => setReqEndDate(event.target.value)}
+                      min={reqStartDate}
+                      required
+                    />
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="block mb-1">Reason:</label>
+                <textarea
+                  rows={5}
+                  placeholder="Describe your reason..."
+                  value={reqReason}
+                  className="w-full p-2 border rounded resize-none"
+                  onChange={(event) => setReqReason(event.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <label className="flex items-center">
                   <input
-                    type="date"
-                    className="rounded-[5px] mx-2"
-                    value={reqEndDate}
-                    onChange={(event) => setReqEndDate(event.target.value)}
-                    min={reqStartDate} // Prevent selecting dates before start date
-                    required
+                    type="checkbox"
+                    checked={notifySlack}
+                    onChange={(e) => setNotifySlack(e.target.checked)}
+                    className="mr-2"
                   />
+                  Notify People in group
                 </label>
               </div>
-
-              <textarea
-                rows={5}
-                placeholder="Describe your reason..."
-                value={reqReason}
-                className="resize-none w-[70vw] h-[30vh] p-2 rounded-[5px]"
-                onChange={(event) => setReqReason(event.target.value)}
-                required
-              />
               <button
-                className="cursor-pointer bg-[#fb5607] p-[5px] rounded-[5px] p-2 font-bold my-2"
+                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
                 type="submit"
               >
                 Submit Leave Request
               </button>
-            </fieldset>
-          </form>
-        </div>
-      )}
+            </form>
+          </div>
+        );
+      case "Request Comp Off":
+        return (
+          <CompOffRequestForm
+            currentUserId={auth.currentUser.uid}
+            onRequestSubmitted={() => setIsCompOffFormVisible(false)}
+          />
+        );
+      case "Leave History":
+        return <LeaveHistory employeeId={auth.currentUser.uid} />;
+      case "Pending Approvals":
+        return <PendingApprovals currentUserId={auth.currentUser.uid} />;
+      case "CompOff History":
+        return <CompOffHistory employeeId={auth.currentUser.uid} />;
+      default:
+        return <div>Content for {activeTab}</div>;
+    }
+  };
 
-      {isCompOffFormVisible && (
-        <CompOffRequestForm
-          currentUserId={auth.currentUser.uid}
-          onRequestSubmitted={() => setIsCompOffFormVisible(false)}
-        />
-      )}
-      <PendingApprovals currentUserId={auth.currentUser.uid} />
+  return (
+    <div className="w-full max-w-[1280px] flex h-screen bg-gray-100 font-oxygen">
+      {/* Sidebar */}
+      <div className="w-80 bg-white shadow-md">
+        <div className="p-4">
+          <h1 className="text-xl font-semibold">{employeeData.name}</h1>
+        </div>
+        <nav className="mt-4">
+          {[
+            "Leave Balance",
+            "Request Leave",
+            "Request Comp Off",
+            "Leave History",
+            "CompOff History",
+            "Pending Approvals",
+          ].map((item) => (
+            <button
+              key={item}
+              className={`w-full text-left p-4 hover:bg-gray-100 ${
+                activeTab === item ? "bg-gray-200" : ""
+              }`}
+              onClick={() => setActiveTab(item)}
+            >
+              {item}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 overflow-auto">
+        <nav className="bg-white shadow-md p-4 flex justify-between items-center">
+          <div className="text-xl">{activeTab}</div>
+          <button
+            className="bg-gray-100 text-black border border-gray-300 px-4 py-2 rounded-md flex items-center"
+            onClick={handleLogout}
+          >
+            Logout <LogOut className="ml-2" size={20} />
+          </button>
+        </nav>
+
+        <div className="p-8">{renderContent()}</div>
+      </div>
     </div>
   );
 };

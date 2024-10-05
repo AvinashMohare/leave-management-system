@@ -5,7 +5,7 @@ import Signup from "./components/Signup";
 import NoRouteMatch from "./components/NoRouteMatch";
 import Details from "./components/Details";
 import EmployeeDashboard from "./components/EmployeeDashboard";
-import ManagerDashboard from "./components/ManagerDashboard";
+import HRDashboard from "./components/HRDashboard";
 import EmployeeDetail from "./components/EmployeeDetails";
 
 const App = () => {
@@ -19,7 +19,7 @@ const App = () => {
           <Route path="Signup" element={<Signup />} />
           <Route path="Details" element={<Details />} />
           <Route path="EmployeeDashboard" element={<EmployeeDashboard />} />
-          <Route path="ManagerDashboard" element={<ManagerDashboard />} />
+          <Route path="HRDashboard" element={<HRDashboard />} />
           <Route path="/employee/:employeeId" element={<EmployeeDetail />} />
           <Route path="*" element={<NoRouteMatch />} />
         </Routes>

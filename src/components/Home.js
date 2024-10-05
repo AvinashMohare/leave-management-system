@@ -6,7 +6,7 @@ import signupImg from "../assets/images/Signup-illustration.jpg";
 const Home = () => {
   return (
     <div className="flex flex-col items-center justify-center h-[100vh] text-2xl">
-      <div>Employee Leave Management System</div>
+      <div class="mb-10">ASQI Leave Management System</div>
       <div className="flex flex-row items-center justify-center">
         <div className="flex flex-col items-center justify-center">
           <div>

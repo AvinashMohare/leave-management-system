@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { auth, database } from "../firebase";
-import { ref, set, update } from "firebase/database";
+import { ref, set, update, get } from "firebase/database";
 import { useNavigate } from "react-router-dom";
 import { updateProfile } from "firebase/auth";
 
@@ -12,83 +12,104 @@ const Details = () => {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("");
   const [error, setError] = useState("");
-  const [managerUid, setManagerUid] = useState("");
+  const [hrList, setHrList] = useState([]);
+  const [selectedHrUid, setSelectedHrUid] = useState("");
+  const [hrExists, setHrExists] = useState(false);
+  const [isMumbaiTeam, setIsMumbaiTeam] = useState(false);
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    // Fetch list of HRs from the database
+    const hrRef = ref(database, "hrs");
+    get(hrRef).then((snapshot) => {
+      if (snapshot.exists()) {
+        const hrData = snapshot.val();
+        const hrArray = Object.entries(hrData).map(([uid, data]) => ({
+          uid,
+          name: data.name,
+        }));
+        setHrList(hrArray);
+        setHrExists(hrArray.length > 0);
+      }
+    });
+  }, []);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (
-      !firstName ||
-      !lastName ||
-      !email ||
-      !role ||
-      (role === "Employee" && !managerUid)
-    ) {
-      setError("Pleasse fill all the details.");
+    if (!firstName || !lastName || !email || !role) {
+      setError("Please fill all the details.");
       return;
     }
 
-    console.log(firstName, lastName, email, role, managerUid);
-
-    const userData =
-      role === "Manager"
-        ? {
-            name: firstName + " " + lastName,
-            email: email,
-            role: role,
-          }
-        : {
-            name: firstName + " " + lastName,
-            email: email,
-            role: role,
-            managerUid: managerUid,
-            leaves: 0,
-            sickLeaves: 0,
-            compOffs: 0,
-          };
-
-    const uid = auth.currentUser.uid;
-
-    const databasePath =
-      role === "Employee"
-        ? ref(database, `employees/${uid}`)
-        : ref(database, `managers/${uid}`);
-
-    set(databasePath, userData)
-      .then((res) => {
-        updateProfile(auth.currentUser, {
-          displayName: firstName + " " + lastName,
-        });
-      })
-      .catch((err) => console.log(err.message));
-
-    if (role === "Employee") {
-      const managedEmployeeRef = ref(
-        database,
-        `managers/${managerUid}/managedEmployees`
-      );
-      update(managedEmployeeRef, {
-        [auth.currentUser.uid]: true,
-      }).catch((err) => console.log(err.message));
+    if (role === "Employee" && !selectedHrUid) {
+      setError("Please select an HR.");
+      return;
     }
 
-    set(ref(database, "users/" + uid), {
+    if (role === "HR" && hrExists) {
+      setError("An HR already exists. You cannot sign up as HR.");
+      return;
+    }
+
+    console.log(firstName, lastName, email, role, selectedHrUid);
+
+    const userData = {
       name: firstName + " " + lastName,
       email: email,
       role: role,
-    })
-      .then((res) => {
-        console.log(res);
-        navigate(
-          role === "Manager" ? "/ManagerDashboard" : "/EmployeeDashboard"
+    };
+
+    if (role === "Employee") {
+      userData.hrUid = selectedHrUid;
+      userData.leaves = 0;
+      userData.compOffs = 0;
+      userData.isMumbaiTeam = isMumbaiTeam;
+      if (isMumbaiTeam) {
+        userData.sickLeaves = 0;
+      }
+    }
+
+    const uid = auth.currentUser.uid;
+
+    try {
+      // Update user profile
+      await updateProfile(auth.currentUser, {
+        displayName: firstName + " " + lastName,
+      });
+
+      // Set user data in the appropriate location
+      const databasePath = `${role.toLowerCase()}s/${uid}`;
+      await set(ref(database, databasePath), userData);
+
+      // Update users node
+      await set(ref(database, `users/${uid}`), {
+        name: firstName + " " + lastName,
+        email: email,
+        role: role,
+      });
+
+      if (role === "Employee") {
+        // Update HR's managed employees
+        const managedEmployeeRef = ref(
+          database,
+          `hr-employee/${selectedHrUid}/managedEmployees`
         );
-      })
-      .catch((err) => console.log(err.message));
+        await update(managedEmployeeRef, {
+          [uid]: true,
+        });
+      }
+
+      console.log("User data updated successfully");
+      navigate(role === "HR" ? "/HRDashboard" : "/EmployeeDashboard");
+    } catch (error) {
+      console.error("Error updating user data:", error.message);
+      setError("An error occurred while updating your information.");
+    }
   };
 
   return (
     <div className="flex items-center justify-center h-[100vh] font-oxygen">
-      <form>
+      <form onSubmit={handleSubmit}>
         <fieldset>
           <legend className="text-center text-4xl font-bold mb-2">
             Details
@@ -142,39 +163,60 @@ const Details = () => {
                 </label>
               </div>
               <div>
-                <label className="cursor-pointer">
+                <label
+                  className={`cursor-pointer ${hrExists ? "opacity-50" : ""}`}
+                >
                   <input
                     type="radio"
                     name="role"
-                    onClick={() => setRole("Manager")}
+                    onClick={() => setRole("HR")}
+                    disabled={hrExists}
                   />
-                  Manager
+                  HR
                 </label>
               </div>
             </div>
-            {role === "Employee" ? (
-              <div className="flex flex-col justify-center my-2">
-                <label>Manager UID</label>
-                <div className="flex flex-row items-center justify-center border-[1px] border-black rounded-[5px]">
-                  <input
-                    type="text"
+            {role === "Employee" && (
+              <>
+                <div className="flex flex-col justify-center my-2">
+                  <label>Select HR</label>
+                  <select
+                    className="border-[1px] border-black rounded-[5px] p-[5px]"
+                    value={selectedHrUid}
+                    onChange={(e) => setSelectedHrUid(e.target.value)}
                     required
-                    className="focus:outline-none m-[5px]"
-                    value={managerUid}
-                    onChange={(e) => setManagerUid(e.target.value)}
-                  />
+                  >
+                    <option value="">Select an HR</option>
+                    {hrList.map((hr) => (
+                      <option key={hr.uid} value={hr.uid}>
+                        {hr.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              </div>
-            ) : null}
+
+                <div className="flex flex-col justify-center my-2">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={isMumbaiTeam}
+                      onChange={(e) => setIsMumbaiTeam(e.target.checked)}
+                    />
+                    Is part of Mumbai team?
+                  </label>
+                </div>
+              </>
+            )}
             <div className="flex align-center justify-center my-2 text-[#ff0e0e] text-lg">
               {error}
             </div>
             <div className="flex align-center justify-center my-2">
-              <input
+              <button
                 type="submit"
-                className="cursor-pointer bg-[#C77DFF] p-[5px] rounded-[8px] w-[320px] "
-                onClick={handleSubmit}
-              />
+                className="cursor-pointer bg-[#C77DFF] p-[5px] rounded-[8px] w-[320px]"
+              >
+                Submit
+              </button>
             </div>
           </div>
         </fieldset>
