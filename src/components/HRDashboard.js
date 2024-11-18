@@ -5,6 +5,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { auth, database } from "../firebase";
 import { ref, onValue, update, get } from "firebase/database";
 import formatDate from "../utils/dateFormat";
+import { PlusCircle } from "lucide-react";
 
 const HRDashboard = () => {
   const [activeTab, setActiveTab] = useState("List of Employees");
@@ -14,6 +15,8 @@ const HRDashboard = () => {
   const [filteredRequests, setFilteredRequests] = useState([]);
   const [compOffRequests, setCompOffRequests] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [canIncrementLeaves, setCanIncrementLeaves] = useState(true);
+  const [leavesUpdatedDate, setLeavesUpdatedDate] = useState();
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -100,6 +103,32 @@ const HRDashboard = () => {
 
     return () => unsubscribe();
   }, [navigate]);
+
+  //to fetch the time stamp of the last updated leaves
+  useEffect(() => {
+    const fetchLeaveIncrementTimestamp = () => {
+      const timestampRef = ref(database, "leaves_incremented_timestamps/");
+
+      onValue(timestampRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          const storedDate = data.timestamp;
+          setLeavesUpdatedDate(storedDate);
+
+          const currentDate = new Date().toISOString().split("T")[0];
+
+          // Compare only the month and year
+          const storedMonth = storedDate.slice(0, 7);
+          const currentMonth = currentDate.slice(0, 7);
+
+          // Disable button if in the same month
+          setCanIncrementLeaves(storedMonth !== currentMonth);
+        }
+      });
+    };
+
+    fetchLeaveIncrementTimestamp();
+  }, []);
 
   const calculateLeaveDays = (startDate, endDate) => {
     const start = new Date(startDate);
@@ -235,11 +264,61 @@ const HRDashboard = () => {
       .catch((err) => console.error(err.message));
   };
 
+  const incrementBulkLeaves = async () => {
+    try {
+      const confirmAction = window.confirm(
+        "Are you sure you want to increment leaves for all employees?"
+      );
+      if (!confirmAction) return;
+
+      const updates = {};
+      employees.forEach((employee) => {
+        const employeeRef = `employees/${employee.uuid}`;
+
+        updates[`${employeeRef}/leaves`] = (employee.leaves || 0) + 1;
+
+        if (employee.isMumbaiTeam) {
+          updates[`${employeeRef}/sickLeaves`] = (employee.sickLeaves || 0) + 1;
+        }
+      });
+
+      // Store global leave increment timestamp
+      updates["leaves_incremented_timestamps/"] = {
+        timestamp: new Date().toISOString().split("T")[0],
+      };
+
+      await update(ref(database), updates);
+      alert("Leaves incremented successfully for all employees!");
+    } catch (error) {
+      console.error("Error incrementing leaves:", error);
+      alert("Failed to increment leaves. Please try again.");
+    }
+  };
+
   const renderContent = () => {
     switch (activeTab) {
       case "List of Employees":
         return (
           <div className="bg-white shadow-md rounded-lg">
+            <div className="flex items-center mb-4 p-4 space-x-4 border-b">
+              <button
+                onClick={incrementBulkLeaves}
+                disabled={!canIncrementLeaves}
+                className={`${
+                  canIncrementLeaves
+                    ? "bg-blue-500 text-white"
+                    : "bg-gray-400 text-gray-200 cursor-not-allowed"
+                } 
+     px-4 py-2 rounded-md flex items-center`}
+              >
+                <PlusCircle className="mr-2" size={20} />
+                Increment Leaves
+              </button>
+              <p className="flex-grow">
+                Last Leaves Updated Date: {formatDate(leavesUpdatedDate)}
+              </p>
+            </div>
+
             {employees.map((employee) => (
               <Link
                 key={employee.uuid}
